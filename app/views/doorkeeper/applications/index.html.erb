@@ -1,13 +1,14 @@
 <div class="row">
   <%= render "/settings/menu" %>
-  <div class="col-md-8">
-    <div class="panel panel-default">
-      <div class="panel-heading clearfix">
+
+  <div class="col-md-10">
+    <div class="card">
+      <div class="card-header clearfix">
         管理的应用列表
         <%= link_to "注册新应用", new_oauth_application_path, class: 'btn btn-success pull-right' %>
       </div>
 
-      <div class="panel-body">
+      <div class="card-body">
         <table class="table table-bordered table-striped table-condensed">
           <thead>
           <tr>
@@ -36,12 +37,12 @@
       </div>
     </div>
 
-    <div class="panel panel-default">
-      <div class="panel-heading clearfix">
+    <div class="card">
+      <div class="card-header clearfix">
         已授权的应用
       </div>
 
-      <div class="panel-body">
+      <div class="card-body">
         <p>下面列表是已经认证的应用，它们可以访问你的帐号。</p>
         <table class="table table-bordered table-striped table-condensed">
           <thead>
@@ -57,7 +58,7 @@
               <td><%= app.name %></td>
               <td><%= app.created_at.strftime(t('doorkeeper.authorized_applications.index.date_format')) %></td>
               <td>
-                <%= link_to "注销", oauth_authorized_application_path(app), class: "btn btn-warning btn-xs", data: { confirm: "确定要注销么？", method: :delete } %>
+                <%= link_to "注销", oauth_authorized_application_path(app), class: "btn btn-default btn-sm", data: { confirm: "确定要注销么？", method: :delete } %>
               </td>
             </tr>
           <% end %>
@@ -67,12 +68,12 @@
     </div>
 
     <% if @devices.length > 0 %>
-    <div class="panel panel-default">
-      <div class="panel-heading clearfix">
+    <div class="card">
+      <div class="card-header clearfix">
         我的设备信息
       </div>
 
-      <div class="panel-body">
+      <div class="card-body">
         <p>下面列表是已经连接上的设备，它们将会收到 Push 通知。</p>
         <table class="table table-bordered table-striped table-condensed">
           <thead>
@@ -89,7 +90,7 @@
               <td><%= device.platform_name %></td>
               <td><%= device.token %></td>
               <td><%= device.alive? %></td>
-              <td><%= link_to '删除', device, class: 'btn btn-warning btn-xs', data: { confirm: '确定要删除么？', method: :delete } %></td>
+              <td><%= link_to '删除', device, class: "btn btn-default btn-sm", data: { confirm: '确定要删除么？', method: :delete } %></td>
             </tr>
           <% end %>
           </tbody>

@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 require "homeland/version"
 
 module Homeland
@@ -14,7 +16,7 @@ module Homeland
     # Plugin list sorted by `config.modules` order
     def sorted_plugins
       @sorted_plugins ||= plugins.sort do |a, b|
-        Setting.module_list.index(a.name) <=> Setting.module_list.index(b.name)
+        Setting.modules.index(a.name) <=> Setting.modules.index(b.name)
       end
     end
 

@@ -10,7 +10,23 @@
     timeout_expired: 'SSO Token 已过期，请重新发起请求。'
     unknown_error: '抱歉 SSO 登录的过程遇到了未处理的异常，登录失败。'
     not_found: '抱歉 SSO 登录的过程遇到了未处理的异常，登录失败。'
+  recaptcha:
+    errors:
+      verification_failed: "reCaptcha 验证不通过，请重试"
+  errors:
+    messages:
+      extension_whitelist_error: "仅允许图片文件上传 [jpg, jpeg, gif, png]"
   activerecord:
+    enums:
+      user:
+        state:
+          deleted: 删除
+          normal: 正常
+          blocked: 禁言
+        state_color:
+          deleted: "yellow"
+          normal: "green"
+          blocked: "red"
     models:
       user: "用户"
       topic: "话题"
@@ -35,7 +51,7 @@
         verified: "信任用户"
         company: "公司"
         github: "GitHub"
-        remember_me: 记住登陆状态
+        remember_me: 记住登录状态
         current_password: 旧密码
         profile_fields:
           qq: QQ

@@ -1,12 +1,17 @@
+# frozen_string_literal: true
+
 class User
+  # 用户个性资料，支持任意扩展，基于 rails-settings-cached 的特性
   module ProfileFields
     extend ActiveSupport::Concern
 
     included do
-      include RailsSettings::Extend
+      include ScopedSetting
 
-      PROFILE_FIELDS = %i(alipay paypal qq weibo wechat douban dingding aliwangwang
-                          facebook instagram dribbble battle_tag psn_id steam_id)
+      scoped_field :profile_fields, default: {}
+
+      PROFILE_FIELDS = %i[alipay paypal qq weibo wechat douban dingding aliwangwang
+                          facebook instagram dribbble battle_tag psn_id steam_id]
 
       PROFILE_FIELD_PREFIXS = {
         douban: "https://www.douban.com/people/",
@@ -16,15 +21,8 @@ class User
         dribbble: "https://dribbble.com/",
         battle_tag: "#"
       }
-    end
 
-    def profile_fields
-      return @profile_fields if defined? @profile_fields
-      @profile_fields = self.settings.profile_fields || {}
-      unless @profile_fields.is_a?(Hash)
-        @profile_fields = {}
-      end
-      @profile_fields
+      before_save :store_location
     end
 
     def profile_field(field)
@@ -40,11 +38,12 @@ class User
     end
 
     def update_profile_fields(field_values)
+      val = profile_fields
       field_values.each do |key, value|
         next unless PROFILE_FIELDS.include?(key.to_sym)
-        profile_fields[key.to_sym] = value
+        val[key.to_sym] = value
       end
-      self.settings.profile_fields = profile_fields
+      self.profile_fields = val
     end
 
     module ClassMethods
@@ -56,5 +55,25 @@ class User
         I18n.t("activerecord.attributes.user.profile_fields.#{field}")
       end
     end
+
+    private
+      # 在用户设置 user.location 保存的时候，自动创建 Location 数据，并更新统计
+      def store_location
+        return if !self.location_changed?
+
+        if location.blank?
+          self.location_id = nil
+          return
+        end
+
+        old_location = Location.location_find_by_name(self.location_was)
+        old_location&.decrement!(:users_count)
+
+        location = Location.location_find_or_create_by_name(self.location)
+        if !location.new_record?
+          location.increment!(:users_count)
+          self.location_id = location.id
+        end
+      end
   end
 end

@@ -1,15 +1,29 @@
+# frozen_string_literal: true
+
 module Admin
   class UsersController < Admin::ApplicationController
     def index
-      @users = User.all
+      scope = User.all
+      if params[:type].present?
+        scope = scope.where(type: params[:type])
+      end
+      field = params[:field] || "login"
+
       if params[:q].present?
         qstr = "%#{params[:q].downcase}%"
-        @users = @users.where("lower(login) LIKE ? or lower(email) LIKE ?", qstr, qstr)
+        scope = begin
+          case params[:field]
+          when "login"
+            scope.where("lower(login) LIKE ?", qstr)
+          when "email"
+            scope.where("lower(email) LIKE ?", qstr)
+          when "name"
+            scope.where("lower(name) LIKE ?", qstr)
+          end
+        end
       end
-      if params[:type].present?
-        @users = @users.where(type: params[:type])
-      end
-      @users = @users.order(id: :desc).page(params[:page])
+
+      @users = scope.order(id: :desc).page(params[:page])
     end
 
     def show
@@ -66,17 +80,29 @@ module Admin
 
     def clean
       @user = User.find_by_login!(params[:id])
-      if params[:type] == "replies"
-        # 为了避免误操作删除大量，限制一次清理 10 条，这个数字对刷垃圾回复的够用了。
-        ids = Reply.unscoped.where(user_id: @user.id).recent.limit(10).pluck(:id)
-        replies = Reply.unscoped.where(id: ids)
-        topics = Topic.where(id: replies.collect(&:topic_id))
-        replies.delete_all
-        topics.each(&:touch)
-
-        count = Reply.unscoped.where(user_id: @user.id).count
-        redirect_to edit_admin_user_path(@user.id), notice: "最近 10 条删除，成功 #{@user.login} 还有 #{count} 条回帖。"
+      case params[:type]
+      when "replies"
+        _clean_replies
+      when "topics"
+        _clean_topics
       end
+    end
+
+    def _clean_replies
+      # 为了避免误操作删除大量，限制一次清理 10 条，这个数字对刷垃圾回复的够用了。
+      ids = Reply.unscoped.where(user_id: @user.id).recent.limit(10).pluck(:id)
+      replies = Reply.unscoped.where(id: ids)
+      topics = Topic.where(id: replies.collect(&:topic_id))
+      replies.delete_all
+      topics.each(&:touch)
+
+      count = Reply.unscoped.where(user_id: @user.id).count
+      redirect_to edit_admin_user_path(@user.id), notice: "最近 10 条删除，成功 #{@user.login} 还有 #{count} 条回帖。"
+    end
+
+    def _clean_topics
+      Topic.unscoped.where(user_id: @user.id).recent.limit(10).delete_all
+      redirect_to edit_admin_user_path(@user.id), notice: "最近 10 条删除成功。"
     end
   end
 end

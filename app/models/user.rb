@@ -1,22 +1,19 @@
+# frozen_string_literal: true
+
 require "digest/md5"
 
 class User < ApplicationRecord
   include Searchable
-  include OmniauthCallbacks
-  include Blockable
-  include Likeable
-  include Followable
-  include TopicRead
-  include TopicFavorite
-  include GithubRepository
-  include UserCallbacks
-  include ProfileFields
-  include RewardFields
+  include User::Roles, User::Blockable, User::Likeable, User::Followable, User::TopicActions,
+          User::GitHubRepository, User::ProfileFields, User::RewardFields, User::Omniauthable
 
   second_level_cache expires_in: 2.weeks
 
-  LOGIN_FORMAT = 'A-Za-z0-9\-\_\.'
+  LOGIN_FORMAT              = 'A-Za-z0-9\-\_\.'
   ALLOW_LOGIN_FORMAT_REGEXP = /\A[#{LOGIN_FORMAT}]+\z/
+
+  ACCESSABLE_ATTRS = %i[name email_public location company bio website github twitter tagline avatar by
+                        current_password password password_confirmation _rucaptcha]
 
   devise :database_authenticatable, :registerable, :recoverable, :lockable,
          :rememberable, :trackable, :validatable, :omniauthable
@@ -36,9 +33,6 @@ class User < ApplicationRecord
 
   attr_accessor :password_confirmation
 
-  ACCESSABLE_ATTRS = [:name, :email_public, :location, :company, :bio, :website, :github, :twitter,
-                      :tagline, :avatar, :by, :current_password, :password, :password_confirmation,
-                      :_rucaptcha]
 
   enum state: { deleted: -1, normal: 1, blocked: 2 }
 
@@ -46,8 +40,9 @@ class User < ApplicationRecord
                     length: { in: 2..20 },
                     presence: true,
                     uniqueness: { case_sensitive: false }
-
   validates :name, length: { maximum: 20 }
+
+  after_commit :send_welcome_mail, on: :create
 
   scope :hot, -> { order(replies_count: :desc).order(topics_count: :desc) }
   scope :without_team, -> { where(type: nil) }
@@ -77,8 +72,7 @@ class User < ApplicationRecord
 
   def self.find_for_database_authentication(warden_conditions)
     conditions = warden_conditions.dup
-    login = conditions.delete(:login)
-    login.downcase!
+    login = conditions.delete(:login).downcase
     where(conditions.to_h).where(["(lower(login) = :value OR lower(email) = :value) and state != -1", { value: login }]).first
   end
 
@@ -90,9 +84,7 @@ class User < ApplicationRecord
     Thread.current[:current_user] = user
   end
 
-  def self.search(term, options = {})
-    limit = (options[:limit] || 30).to_i
-    user = options[:user]
+  def self.search(term, user: nil, limit: 30)
     following = []
     term = term.to_s + "%"
     users = User.where("login ilike ? or name ilike ?", term, term).order("replies_count desc").limit(limit).to_a
@@ -127,6 +119,15 @@ class User < ApplicationRecord
     (authorizations.empty? || !password.blank?) && super
   end
 
+  # Override Devise to send mails with async
+  def send_devise_notification(notification, *args)
+    devise_mailer.send(notification, self, *args).deliver_later
+  end
+
+  def send_welcome_mail
+    UserMailer.welcome(id).deliver_later
+  end
+
   def profile_url
     "/#{login}"
   end
@@ -149,73 +150,6 @@ class User < ApplicationRecord
   def fullname
     return login if name.blank?
     "#{login} (#{name})"
-  end
-
-  # 是否是管理员
-  def admin?
-    Setting.has_admin?(email)
-  end
-
-  # 是否有 Wiki 维护权限
-  def wiki_editor?
-    self.admin? || verified == true
-  end
-
-  # 回帖大于 150 的才有酷站的发布权限
-  def site_editor?
-    self.admin? || replies_count >= 100
-  end
-
-  # 是否能发帖
-  def newbie?
-    return false if verified?
-    t = Setting.newbie_limit_time.to_i
-    return false if t == 0
-    created_at > t.seconds.ago
-  end
-
-  def roles?(role)
-    case role
-    when :admin then admin?
-    when :wiki_editor then wiki_editor?
-    when :site_editor then site_editor?
-    when :member then self.normal?
-    else false
-    end
-  end
-
-  # 用户的账号类型
-  def level
-    if admin?
-      "admin"
-    elsif verified?
-      "vip"
-    elsif blocked?
-      "blocked"
-    elsif newbie?
-      "newbie"
-    else
-      "normal"
-    end
-  end
-
-  def level_name
-    I18n.t("common.#{level}_user")
-  end
-
-  # Override Devise to send mails with async
-  def send_devise_notification(notification, *args)
-    devise_mailer.send(notification, self, *args).deliver_later
-  end
-
-  def bind?(provider)
-    authorizations.collect(&:provider).include?(provider)
-  end
-
-  def bind_service(response)
-    provider = response["provider"]
-    uid = response["uid"].to_s
-    authorizations.create(provider: provider, uid: uid)
   end
 
   # 软删除
@@ -264,19 +198,19 @@ class User < ApplicationRecord
     end
   end
 
-  def team_collection
-    return @team_collection if defined? @team_collection
+  def team_options
+    return @team_options if defined? @team_options
     teams = self.admin? ? Team.all : self.teams
-    @team_collection = teams.collect { |t| [t.name, t.id] }
+    @team_options = teams.collect { |t| [t.name, t.id] }
   end
 
   # for Searchable
   def as_indexed_json(_options = {})
-    as_json(only: [:login, :name, :tagline, :bio, :email, :location])
+    as_json(only: %i[login name tagline bio email location])
   end
 
   def indexed_changed?
-    %i(login name tagline bio email location).each do |key|
+    %i[login name tagline bio email location].each do |key|
       return true if saved_change_to_attribute?(key)
     end
     false

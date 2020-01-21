@@ -1,8 +1,10 @@
+# frozen_string_literal: true
+
 # ApplicationController
 class ApplicationController < ActionController::Base
   protect_from_forgery prepend: true
-  helper_method :unread_notify_count
   helper_method :turbolinks_app?, :turbolinks_ios?, :turbolinks_app_version
+  include Homeland::UserNotificationHelper
 
   # Addition contents for etag
   etag { current_user.try(:id) }
@@ -43,7 +45,7 @@ class ApplicationController < ActionController::Base
                  ["/wiki"]
                else
                  ["/#{controller_name}"]
-               end
+    end
   end
 
   before_action :set_locale
@@ -66,11 +68,11 @@ class ApplicationController < ActionController::Base
 
   def render_optional_error_file(status_code)
     status = status_code.to_s
-    fname = %w(404 403 422 500).include?(status) ? status : "unknown"
+    fname = %w[404 403 422 500].include?(status) ? status : "unknown"
 
     respond_to do |format|
       format.html { render template: "/errors/#{fname}", handler: [:erb], status: status, layout: "application" }
-      format.all  { render nothing: true, status: status }
+      format.all { render body: nil, status: status }
     end
   end
 
@@ -89,11 +91,6 @@ class ApplicationController < ActionController::Base
 
   def redirect_referrer_or_default(default)
     redirect_to(request.referrer || default)
-  end
-
-  def unread_notify_count
-    return 0 if current_user.blank?
-    @unread_notify_count ||= Notification.unread_count(current_user)
   end
 
   def authenticate_user!(opts = {})
@@ -152,12 +149,12 @@ class ApplicationController < ActionController::Base
 
   private
 
-  def user_locale
-    params[:locale] || cookies[:locale] || http_head_locale || Setting.default_locale || I18n.default_locale
-  end
+    def user_locale
+      params[:locale] || cookies[:locale] || http_head_locale || Setting.default_locale || I18n.default_locale
+    end
 
-  def http_head_locale
-    return nil if Setting.auto_locale == false
-    http_accept_language.language_region_compatible_from(I18n.available_locales)
-  end
+    def http_head_locale
+      return nil if !Setting.auto_locale?
+      http_accept_language.language_region_compatible_from(I18n.available_locales)
+    end
 end

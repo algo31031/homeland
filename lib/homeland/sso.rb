@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 module Homeland
   class SSO < SingleSignOn
     def self.sso_url
@@ -72,12 +74,14 @@ module Homeland
       # Add as admin
       if admin == true
         unless Setting.has_admin?(email)
-          Setting.admin_emails = Setting.admin_emails + "\n" + email
+          emails = Setting.admin_emails
+          emails << email
+          Setting.admin_emails = emails
         end
       end
 
       sso_record.save!
-      sso_record && sso_record.user
+      sso_record&.user
     end
 
     def match_email_or_create_user
@@ -89,8 +93,13 @@ module Homeland
           login: Homeland::Username.sanitize(username || name),
           password: Devise.friendly_token[0, 20]
         }
+        user = User.new(user_params)
 
-        user = User.create!(user_params)
+        if !user.valid?
+          user.login += "-#{external_id}"
+        end
+
+        user.save!
       end
 
       sso_record = user.sso || user.create_sso(

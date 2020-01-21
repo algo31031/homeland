@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 module Mentionable
   extend ActiveSupport::Concern
 
@@ -25,9 +27,12 @@ module Mentionable
 
   def extract_mentioned_users
     logins = body.scan(/@([#{User::LOGIN_FORMAT}]{3,20})/).flatten.map(&:downcase)
+    logins.delete(user.login.downcase) if user
+
     if logins.any?
-      self.mentioned_user_ids = User.without_team.where("lower(login) IN (?) AND id != (?)", logins, user.id).limit(5).pluck(:id)
+      self.mentioned_user_ids = User.without_team.where("lower(login) IN (?)", logins).limit(5).pluck(:id)
     end
+
 
     # add Reply to user_id
     if self.respond_to?(:reply_to)
@@ -38,37 +43,39 @@ module Mentionable
     end
   end
 
-  def no_mention_users
-    [user]
-  end
+  private
 
-  def send_mention_notification
-    users = mentioned_users - no_mention_users
-    Notification.bulk_insert(set_size: 100) do |worker|
-      users.each do |user|
-        note = {
-          notify_type: "mention",
-          actor_id: self.user_id,
-          user_id: user.id,
-          target_type: self.class.name,
-          target_id: self.id
-        }
-        if self.class.name == "Reply"
-          note[:second_target_type] = "Topic"
-          note[:second_target_id] = self.send(:topic_id)
-        elsif self.class.name == "Comment"
-          note[:second_target_type] = self.commentable_type
-          note[:second_target_id] = self.commentable_id
+    def no_mention_users
+      [user]
+    end
+
+    def send_mention_notification
+      users = mentioned_users - no_mention_users
+      Notification.bulk_insert(set_size: 100) do |worker|
+        users.each do |user|
+          note = {
+            notify_type: "mention",
+            actor_id: self.user_id,
+            user_id: user.id,
+            target_type: self.class.name,
+            target_id: self.id
+          }
+          if self.class.name == "Reply"
+            note[:second_target_type] = "Topic"
+            note[:second_target_id] = self.send(:topic_id)
+          elsif self.class.name == "Comment"
+            note[:second_target_type] = self.commentable_type
+            note[:second_target_id] = self.commentable_id
+          end
+          worker.add(note)
         end
-        worker.add(note)
+      end
+
+      # Touch push to client
+      # TODO: 确保准确
+      users.each do |u|
+        n = u.notifications.last
+        n.realtime_push_to_client
       end
     end
-
-    # Touch push to client
-    # TODO: 确保准确
-    users.each do |u|
-      n = u.notifications.last
-      n.realtime_push_to_client
-    end
-  end
 end

@@ -1,9 +1,9 @@
 .notifications {
-  .panel-heading {
+  .card-header {
     font-size: 16px;
     line-height: 32px;
   }
-  .panel-body {
+  .card-body {
     padding-top: 0;
     padding-bottom: 0;
   }
@@ -23,6 +23,15 @@
     padding: 10px 15px;
     &:last-child {
       border-bottom: 0;
+    }
+
+    .media-body {
+      overflow: hidden;
+
+      .markdown {
+        pre,
+        img { margin-left: 0; margin-right: 0; }
+      }
     }
 
     a { color: #555; }

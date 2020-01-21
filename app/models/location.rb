@@ -1,9 +1,11 @@
+# frozen_string_literal: true
+
 class Location < ApplicationRecord
   second_level_cache expires_in: 2.weeks
 
   has_many :users
 
-  scope :hot, -> { order(users_count: :desc) }
+  scope :hot, -> { order(users_count: :desc).where.not(users_count: 0) }
 
   validates :name, presence: true, uniqueness: { case_sensitive: false }
 

@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 class BaseUploader < CarrierWave::Uploader::Base
   # 在 UpYun 或其他平台配置图片缩略图
   # http://docs.upyun.com/guide/#_12
@@ -10,7 +12,7 @@ class BaseUploader < CarrierWave::Uploader::Base
   #
   # Photo
   # large - 1920x? - 限定宽度，高度自适应
-  ALLOW_VERSIONS = %w(xs sm md lg large)
+  ALLOW_VERSIONS = %w[xs sm md lg large]
 
   def store_dir
     dir = model.class.to_s.underscore
@@ -20,8 +22,8 @@ class BaseUploader < CarrierWave::Uploader::Base
     dir
   end
 
-  def extension_white_list
-    %w(jpg jpeg gif png svg)
+  def extension_whitelist
+    %w[jpg jpeg gif png]
   end
 
   def url(version_name = nil)
@@ -37,6 +39,8 @@ class BaseUploader < CarrierWave::Uploader::Base
       super(thumb: "?x-oss-process=image/#{aliyun_thumb_key(version_name)}")
     when "upyun"
       [@url, version_name].join("!")
+    when "qiniu"
+      super(style: qiniu_thumb_key(version_name))
     else
       [@url, version_name].join("!")
     end
@@ -44,15 +48,27 @@ class BaseUploader < CarrierWave::Uploader::Base
 
   private
 
-  def aliyun_thumb_key(version_name)
-    case version_name
-    when "large" then "resize,w_1920"
-    when "lg"    then "resize,w_192,h_192,m_fill"
-    when "md"    then "resize,w_96,h_96,m_fill"
-    when "sm"    then "resize,w_48,h_48,m_fill"
-    when "xs"    then "resize,w_32,h_32,m_fill"
-    else
-      "resize,w_32,h_32,m_fill"
+    def aliyun_thumb_key(version_name)
+      case version_name
+      when "large" then "resize,w_1920"
+      when "lg"    then "resize,w_192,h_192,m_fill"
+      when "md"    then "resize,w_96,h_96,m_fill"
+      when "sm"    then "resize,w_48,h_48,m_fill"
+      when "xs"    then "resize,w_32,h_32,m_fill"
+      else
+        "resize,w_32,h_32,m_fill"
+      end
     end
-  end
+
+    def qiniu_thumb_key(version_name)
+      case version_name
+      when "large" then "imageView2/2/w/1920/q/100"
+      when "lg"    then "imageView2/3/w/192/h/192/q/100"
+      when "md"    then "imageView2/3/w/96/h/96/q/100"
+      when "sm"    then "imageView2/3/w/48/h/48/q/100"
+      when "xs"    then "imageView2/3/w/32/h/32/q/100"
+      else
+        "imageView2/3/w/32/h/32/q/100"
+      end
+    end
 end

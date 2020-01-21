@@ -35,34 +35,33 @@
   <%= yield :javascripts %>
 </head>
 <body class="page-<%= controller_name %><%= ' infinite-scroll' if turbolinks_app? %>" data-controller-name="<%= controller_name %>">
-  <div class="header">
-    <nav class="navbar navbar-inverse navbar-fixed-top navbar-default">
-      <div class="container">
-        <div class="navbar-header" id="navbar-header" data-turbolinks-permanent>
-          <button type="button" class="navbar-toggle collapsed" data-toggle="collapse" data-target="#main-navbar-collapse">
-            <span class="sr-only">Toggle</span>
-            <i class="fa fa-reorder"></i>
-          </button>
-          <%= raw Setting.navbar_brand_html %>
-        </div>
-        <div class="collapse navbar-collapse" id="main-navbar-collapse">
-          <%= yield :header %>
-          <%= render "shared/navbar" %>
-        </div>
+  <div class="header navbar navbar-expand flex-md-row bd-navbar">
+    <div class="container d-sm-flex">
+      <div class="navbar-header d-none d-md-flex" id="navbar-header" data-turbolinks-permanent>
+        <%= raw Setting.navbar_brand_html %>
+      </div>
+      <div class="navbar-nav-scroll">
+        <%= yield :header %>
+        <%= render "shared/navbar" %>
+      </div>
+      <div class="ml-auto d-md-flex">
+        <form class="navbar-form d-none d-lg-flex mr-2 form-search active" action="/search" method="GET">
+          <i class="fa btn-search fa-search"></i>
+          <input class="form-control" name="q" type="text" value="<%= params[:q] %>" placeholder="搜索本站内容" />
+        </form>
         <%= render "shared/usernav" %>
       </div>
-    </nav>
+    </div>
   </div>
 
   <%= yield :sub_navbar %>
 
   <div id="main" class="main-container container">
-    <%= birthday_tag %>
     <%= notice_message %>
     <%= content_for?(:main) ? yield(:main) : yield %>
   </div>
 
-  <% if not mobile? %>
+  <% if !mobile? %>
   <footer class="footer" id="footer" data-turbolinks-permanent>
     <div class="container">
       <%= raw Setting.footer_html %>

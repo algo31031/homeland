@@ -1,16 +1,18 @@
-FactoryGirl.define do
+# frozen_string_literal: true
+
+FactoryBot.define do
   factory :team_user do
     association :team
     association :user
-    role :member
-    status :accepted
+    role { :member }
+    status { :accepted }
   end
 
   factory :team_owner, parent: :team_user do
-    role :owner
+    role { :owner }
   end
 
   factory :team_member, parent: :team_user do
-    role :member
+    role { :member }
   end
 end

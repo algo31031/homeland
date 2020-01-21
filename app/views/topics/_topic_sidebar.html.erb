@@ -1,7 +1,7 @@
 <div id="topic-sidebar" data-spy="affix" data-offset-bottom="65">
-  <div class="panel panel-default">
-    <div class="panel-body">
-      <a href="#" class="btn btn-block btn-sm btn-move-page" data-type="top"><i class="fa fa-arrow-up"></i></a>
+  <div class="card">
+    <div class="card-body">
+      <a href="#" class="btn btn-default btn-block btn-sm btn-move-page" data-type="top"><i class="fa fa-arrow-up"></i></a>
       <div class="buttons">
         <div class="group likes opts">
           <%= likeable_tag(@topic) %>
@@ -36,8 +36,11 @@
             <% if !@topic.excellent? %>
             <%= link_to raw("<i class='fa fa-diamond'></i> 加精"), action_topic_path(@topic, type: 'excellent'), method: "post", remote: true %>
             <% end %>
-            <% if @topic.node_id != Node.no_point.id %>
-              <%= link_to raw("<i class='fa fa-ban'></i> 屏蔽"), ban_topic_path(@topic), remote: true, title: "屏蔽此贴，移动到 NoPoint 节点" %>
+
+            <% if !@topic.ban? %>
+              <%= link_to raw("<i class='fa fa-ban'></i> 屏蔽"), ban_topic_path(@topic), remote: true, title: "全站屏蔽此贴" %>
+            <% else %>
+              <%= link_to raw("<i class='fa fa-ban'></i> 取消"), action_topic_path(@topic, type: 'normal'), method: :post, remote: true, title: "取消全站屏蔽此贴" %>
             <% end %>
           </div>
         <% end %>
@@ -58,7 +61,7 @@
         </div>
         <% end %>
       </div>
-      <a href="#" class="btn btn-block btn-move-page" data-type="bottom"><i class="fa fa-arrow-down"></i></a>
+      <a href="#" class="btn btn-default btn-sm btn-block btn-move-page" data-type="bottom"><i class="fa fa-arrow-down"></i></a>
     </div>
   </div>
 

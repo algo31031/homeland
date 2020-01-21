@@ -1,24 +1,31 @@
+# frozen_string_literal: true
+
 # This file is copied to spec/ when you run 'rails generate rspec:install'
-ENV['RAILS_ENV'] ||= 'test'
-require File.expand_path('../../config/environment', __FILE__)
+ENV["RAILS_ENV"] ||= "test"
+# Ensure use file uploader
+ENV["upload_provider"] = "file"
+
+require File.expand_path("../../config/environment", __FILE__)
 # Prevent database truncation if the environment is production
-abort('The Rails environment is running in production mode!') if Rails.env.production?
-abort('Do not use "upyun" as upload_provider!') if Setting.upload_provider == 'upyun'
-require 'spec_helper'
-require 'rspec/rails'
-require 'capybara/rspec'
-require 'sidekiq/testing'
-require 'database_cleaner'
-require 'simplecov'
+abort("The Rails environment is running in production mode!") if Rails.env.production?
+abort('Do not use "upyun" as upload_provider!') if Setting.upload_provider == "upyun"
+require "spec_helper"
+require "rspec/rails"
+require "sidekiq/testing"
+require "simplecov"
 
 SimpleCov.start
-if ENV['CI'] == 'true'
-  require 'codecov'
+if ENV["CI"] == "true"
+  require "codecov"
   SimpleCov.formatter = SimpleCov::Formatter::Codecov
 end
 
 Devise.stretches = 1
 Rails.logger.level = 4
+# https://github.com/thoughtbot/factory_bot/blob/master/GETTING_STARTED.md#associations
+FactoryBot.use_parent_strategy = false
+DatabaseCleaner.orm = :active_record
+DatabaseCleaner.strategy = :truncation
 
 # Requires supporting ruby files with custom matchers and macros, etc, in
 # spec/support/ and its subdirectories. Files matching `spec/**/*_spec.rb` are
@@ -33,7 +40,7 @@ Rails.logger.level = 4
 # directory. Alternatively, in the individual `*_spec.rb` files, manually
 # require only the support files necessary.
 #
-Dir[Rails.root.join('spec/support/**/*.rb')].each { |f| require f }
+Dir[Rails.root.join("spec/support/**/*.rb")].each { |f| require f }
 
 # Checks for pending migrations before tests are run.
 # If you are not using ActiveRecord, you can remove this line.
@@ -87,8 +94,11 @@ RSpec.configure do |config|
   config.render_views
 
   config.before(:each) do
-    DatabaseCleaner.orm = :active_record
-    DatabaseCleaner.strategy = :truncation
+    # Mock Topic::RateLimit
+    allow(Setting).to receive(:topic_create_limit_interval).and_return("")
+    allow(Setting).to receive(:topic_create_hour_limit_count).and_return("")
+
+    # Database cleaner
     DatabaseCleaner.clean
     Rails.cache.clear
 
@@ -98,7 +108,7 @@ RSpec.configure do |config|
 
   config.include Devise::Test::ControllerHelpers, type: :controller
   config.include RSpec::Rails::RequestExampleGroup, type: :request, file_path: %r{spec/api}
-  config.include APIV3Support, type: :request, file_path: %r{spec/api/v3}
+  config.include RequestSupport, type: :request, file_path: %r{requst|spec/api/v3}
 
-  config.include FactoryGirl::Syntax::Methods
+  config.include FactoryBot::Syntax::Methods
 end

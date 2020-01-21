@@ -1,10 +1,15 @@
+# frozen_string_literal: true
+
 module Api
   module V3
     # @abstract
-    class ApplicationController < ActionController::API
+    # FIXME: change to ActionController::API after jbuilder fix for Rails 5.2
+    class ApplicationController < ActionController::Base
       include ActionController::Caching
       include ActionView::Helpers::OutputSafetyHelper
       include ApplicationHelper
+
+      skip_before_action :verify_authenticity_token
 
       helper_method :can?, :current_user, :current_ability, :meta
       helper_method :admin?, :owner?, :markdown, :raw

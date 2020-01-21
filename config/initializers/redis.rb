@@ -1,17 +1,23 @@
-require 'redis'
-require 'redis-namespace'
-require 'redis/objects'
+# frozen_string_literal: true
+
+require "redis"
+require "redis-namespace"
+require "redis/objects"
 
 redis_config = Rails.application.config_for(:redis)
 
-$redis = Redis.new(host: redis_config['host'], port: redis_config['port'])
-$redis.select(0)
+$redis = Redis.new(url: redis_config["url"], driver: :hiredis, db: 0)
+sidekiq_url = redis_config["url"]
 Redis::Objects.redis = $redis
 
-sidekiq_url = "redis://#{redis_config['host']}:#{redis_config['port']}/0"
 Sidekiq.configure_server do |config|
-  config.redis = { namespace: 'sidekiq', url: sidekiq_url }
+  config.redis = { namespace: "sidekiq", url: sidekiq_url, driver: :hiredis, db: 0 }
 end
 Sidekiq.configure_client do |config|
-  config.redis = { namespace: 'sidekiq', url: sidekiq_url }
+  config.redis = { namespace: "sidekiq", url: sidekiq_url, driver: :hiredis, db: 0 }
+end
+
+if Sidekiq.server?
+  schedule_config = YAML.load(ERB.new(File.read("config/schedule.yml")).result)
+  Sidekiq::Cron::Job.load_from_hash(schedule_config)
 end

@@ -1,11 +1,16 @@
+# frozen_string_literal: true
+
 class User
+  # 允许用户配置 Alipay|Weichat 的打赏二维码
   module RewardFields
     extend ActiveSupport::Concern
 
     included do
-      include RailsSettings::Extend
+      include ScopedSetting
 
-      REWARD_FIELDS = %i(alipay wechat)
+      scoped_field :reward_fields, default: {}
+
+      REWARD_FIELDS = %i[alipay wechat]
     end
 
     def reward_enabled?
@@ -20,21 +25,13 @@ class User
       reward_fields[field.to_sym]
     end
 
-    def reward_fields
-      return @reward_fields if defined? @reward_fields
-      @reward_fields = self.settings.reward_fields || {}
-      unless @reward_fields.is_a?(Hash)
-        @reward_fields = {}
-      end
-      @reward_fields
-    end
-
     def update_reward_fields(field_values)
+      val = self.reward_fields
       field_values.each do |key, value|
         next unless REWARD_FIELDS.include?(key.to_sym)
-        reward_fields[key.to_sym] = value
+        val[key.to_sym] = value
       end
-      self.settings.reward_fields = reward_fields
+      self.reward_fields = val
     end
 
     module ClassMethods

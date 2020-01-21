@@ -1,5 +1,7 @@
+# frozen_string_literal: true
+
 class User
-  module GithubRepository
+  module GitHubRepository
     extend ActiveSupport::Concern
 
     included do
@@ -10,7 +12,7 @@ class User
       cache_key = github_repositories_cache_key
       items = Homeland.file_store.read(cache_key)
       if items.nil?
-        GithubRepoFetcherJob.perform_later(id)
+        GitHubRepoFetcherJob.perform_later(id)
         items = []
       end
       items.take(10)
@@ -34,7 +36,7 @@ class User
         url = user.github_repo_api_url
         begin
           json = Timeout.timeout(10) { open(url).read }
-        rescue => e
+        rescue StandardError => e
           Rails.logger.error("GitHub Repositiory fetch Error: #{e}")
           Homeland.file_store.write(user.github_repositories_cache_key, [], expires_in: 1.minutes)
           return
